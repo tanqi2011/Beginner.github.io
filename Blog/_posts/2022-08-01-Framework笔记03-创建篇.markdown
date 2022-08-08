@@ -1,0 +1,69 @@
+---
+layout: post
+title:  "Framework笔记03 - 创建篇"
+date:   2022-08-01 17:05:00 +0800
+categories: Framework
+---
+
+### 库的创建
+
+### （1）.a静态库
+
+* 利用Xcode创建`Static Library`
+* 修改`PROJECT`设置`iOS Deployment Target`为指定可支持版本
+* 新建.h/.m文件，将想要公开的头文件在`Build Phase`的`Copy Files`中手动添加
+* 选择对应的`真机/模拟器`进行Build，Build之前记得Clean一下，确保生成正确的库
+* 目标程序在`General`的`Frameworks, Libraries, and Embedded Content`导入
+* 如果找不到头文件，可以在`Build Settings`->`Search Paths`->`Library Search Paths`中添加静态库目录
+
+
+### （2）.framework
+
+* 利用Xcode创建`Framework`
+* 修改`PROJECT`设置`iOS Deployment Target`或者`General`中的`Deployment Info`为指定可支持版本
+* 新建.h/.m文件，在`Build Phase`的`Headers`中，`Public`存放对外可见和可使用的头文件，`Private`存放对外可见但不可使用的头文件，`Project`存放对外不可见只对内使用的头文件(新建的头文件默认在这)
+* 修改`Mach-O Type`：Mach Object Type的缩写，制作动态库为`Dynamic Library`，制作静态库为`Static Library`
+* 选择对应的`真机/模拟器`进行Build，Build之前记得Clean一下，确保生成正确的库
+* 目标程序在`General`的`Frameworks, Libraries, and Embedded Content`导入
+* 如果找不到头文件，可以在`Build Settings`->`Search Paths`->`Library Search Paths`中添加静态库目录
+
+
+#### 知识补充1：iOS Framework的Embed、Signing
+
+选中Xcode工程的Target时，可以看到`General`页面中`Frameworks, Libraries, and Embedded Content`下有导入三方库的几种状态：  
+`Do Not Embeded`、`Embed & Sign`、`Embeded Without Signing`
+
+* 嵌入(Embed)
+只用于**动态库**，因为动态库在运行时链接，所以它们需要被打到bundle里。
+系统的framework是动态库，第三方或者自己建立的framework有可能是静态库。
+```
+# 查看framework是否需要Embed
+    $ file xxx.framework/frameworkFile
+返回：
+    - `current ar archive`：静态库，选择`Do Not Embeded`
+    - `Mach-O dynamically`：动态库，选择`Embed & Sign`或`Embeded Without Signing`
+```
+
+* 签名(Signing)
+只用于**动态库**，如果已经有了签名，就不需要再签名。
+```
+# 查看framework是否需要Signing
+    $ codesign -dv xxx.framework
+返回：
+    - `code object is not signed at all`或`adhoc`：选择`Embed & Sign`
+    - 其他结果：表示已经正确签名，选择`Embeded Without Signing`
+```
+
+
+#### 知识补充2：Xcode中LinkBinaryWithLibraries的Status
+
+选中Xcode工程的Target时，在`Build Phases`页面中`Link Binary With Libraries`列出了需要链接的动态库和静态库，库对应的`Status`有两种选项：
+* Required(默认)：声明此库是必须的，一定会被加载。拿动态库来说，如果不存在该库的机器上找不到对应动态库，就会导致app一启动就退出。
+* Optional：声明此库时可选的，不一定会被加载。因为app用户的系统版本不统一，如果用户机器上有多个版本的该库的时候，可以把该库改成可选库，然后通过代码去动态判断需要的对应版本库。
+* 一个大的库，如果不是必须的，可以设置为Optional，这样会使得应用初始化变快。
+
+
+> 例子：
+> 比如最新的iOS16推出了一个新的框架，我们的新业务必须要用这个框架；
+> 如果我们导入该框架，但在iOS16以前的设备上是找不到该框架的，这会导致iOS16以前的设备出现闪退等莫名其妙的问题；
+> 这时我们就可以把该框架设置成`Optional`，然后在代码中判断iOS16以上才可以使用该框架即可。

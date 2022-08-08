@@ -27,6 +27,9 @@ Aritificial Intelligence
 
 > **动态库**  
 > 动态库分为 `.framework`、`.tbd` 两种形式。  
+> 动态库其实也可以分为`动态链接库`和`动态加载库`两种，本质区别是加载时间。  
+> **动态链接库**：当目标文件被加载时，动态库也跟着被加载到内存中。`Link Binary With Libraries`中的一些库，随着程序启动而启动。  
+> **动态加载库**：当需要的时候再使用`dlopen`等代码或者命令的方式加载，在程序启动之后。  
 > **iOS8**：iOS8之前，苹果不允许第三方框架使用动态库方式加载；iOS8之后开始允许开发者有条件地创建和使用动态库框架(这种框架叫做`Cocoa Touch Framework`)。虽然是动态框架，但和系统的动态库framework不同，app中使用的`Cocoa Touch Framework`在打包和提交app时会被放到app的bundle内，运行在app的沙盒里，而不能跨app复用。也就是说，不同的app之间还是不能使用同一份framework，不同的app会分别对framework进行签名、打包、加载。  
 > [PS]：不过iOS8上开放了App Extension功能，可以为app创建插件；主app和插件之间是可以共享动态库的。  
 > **PLT**：动态链接使用了Procedure Linkage Table（PLT），首先这个PLT列出程序中每个函数的调用，当程序开始运行时，如果动态库被加载到内存中，PLT就会去寻找对应函数的地址并记录下来，如果函数被调用过的话，下次调用就可以通过PLT直接找到对应的函数地址了。

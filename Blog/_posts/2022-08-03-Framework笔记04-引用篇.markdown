@@ -1,0 +1,47 @@
+---
+layout: post
+title:  "Framework笔记04 - 引用篇"
+date:   2022-08-03 16:34:00 +0800
+categories: Framework
+---
+
+### 静态库与动态库的相互引用
+
+#### 1. 动态库引用动态库  
+**假设A动态库引用B动态库：**  
+* 如果B动态库可以通过Cocoapods管理，需要在A动态库项目中指定A为target添加B的Pod，并`use_frameworks!`声明B为动态库；最后在引用A的目标程序中同时引用B的动态库。  
+* 如果B动态库是自创建私有库，则需要提供B动态库的文件给引用A的目标程序。  
+* 动态库引用动态库，并没有将被引用的动态库打进自身动态库中，而只是在链接的时候产生了关联。需要在外部使用动态库的时候，手动Embed被引用的动态库。这样做虽然麻烦，但因为是动态库，所以导入的时候只需要导入一份，不会产生重复代码。  
+```
+    # 如果目标程序没有引入B动态库，则会报错
+    dyld: Library not loaded: @rpath/B.framework ......
+    Reason: image not found / (no such file)
+```
+
+#### 2. 动态库引用静态库  
+**假设A动态库引用B静态库：**  
+* 因为静态库是在制作A动态库的时候，已经链接上了完整的B静态库，所以相当于直接把代码写入到动态库中。目标项目只需简单引用动态库A即可。  
+* 特殊情况，如果目标项目也想使用静态库B，因为静态库B已经被A封装起来了，如果这时目标项目也引入了B，则会报警告：  
+```
+    # 不过这个警告不影响运行
+    Class XXXX is implemented in 
+    both Path1/Frameworks/A.framework/A (0x1033b1b88) and Path2/ProjectPath (0x102ddecb8). 
+    One of the two will be used. Which one is undefined.
+```
+* 如果非要消除这个警告：方法1->修改静态库中各类的命名；方法2->只在工程中保留需要引用的静态库B的头文件（待验证）  
+
+#### 3. 静态库引用静态库  
+**假设静态库A引用静态库B：**  
+* 静态库A在制作过程中，如果依赖静态库B，则在目标程序上引用A的时候，也需要把B引用进来。不然就会报错：  
+```
+    Undefined symbols for architecture arm64:
+    "_OBJC_CLASS_$_SVProgressHUD", referenced from:
+          objc-class-ref in ViewController.o
+          objc-class-ref in StaticWithStatic(SSHUD.o)
+    ld: symbol(s) not found for architecture arm64
+    clang: error: linker command failed with exit code 1 (use -v to see invocation)
+```
+* 如果静态库A通过Cocoapods引入静态库B，目标程序也需要通过Cocoapods引入静态库B。因为Cocoapods在静态库A引入静态库B的时候，只是起到了链接的作用，并没有打到静态库A的包里。  
+
+#### 4. 静态库引用动态库(不可行)  
+因为静态库在链接之后必须是自完备的，而动态库在运行时链接加载。  
