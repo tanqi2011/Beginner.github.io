@@ -28,7 +28,9 @@ categories: Framework
     both Path1/Frameworks/A.framework/A (0x1033b1b88) and Path2/ProjectPath (0x102ddecb8). 
     One of the two will be used. Which one is undefined.
 ```
-* 如果非要消除这个警告：方法1->修改静态库中各类的命名；方法2->只在工程中保留需要引用的静态库B的头文件（待验证）  
+* 如果非要消除这个警告：  
+方法1->修改静态库中各类的命名；  
+方法2->只在工程中保留需要引用的静态库B的头文件（待验证）  
 
 #### 3. 静态库引用静态库  
 **假设静态库A引用静态库B：**  

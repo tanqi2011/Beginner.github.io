@@ -1,0 +1,52 @@
+---
+layout: post
+title:  "Framework笔记07 - 打包篇"
+date:   2022-08-11 10:53:00 +0800
+categories: Framework
+---
+
+### 二进制的打包方式
+
+> 1. 通过Xcode提供的方式，编译打包。  
+> 2. 使用Aggregate打包。  
+> 3. 使用脚本打包。  
+> 4. 使用cocoapods-packager打包。【推荐使用】  
+
+下面以cocoapods-packager打包举例： 
+1. 搭建
+```
+# 创建cocoapods的lib项目
+$ pod lib create PodName
+```
+2. 修改podspec  
+重点注意以下几个配置：  
+* s.source_files 类库源文件存放目录，即需要打成二进制包的主要部分  
+* s.public_header_files 需要公开的头文件  
+* s.resources 资源文件存放目录  
+* s.resource_bundles 资源文件bundle存储方式  
+* s.static_framework = ture 是否使用静态库  
+
+```
+简单说说Podfile的`use_framework!`和podspec的`s.static_framework=true/false`的关系：
+1. 如果不使用`use_framework!`，声明Pods会以默认静态库lib的方式引入(.a)。
+2. `use_framework!`只是说明pods是通过framework方式引入，并没有特指一定是动态库方式还是静态库方式，最终还得根据podspec中的`s.static_framework=true/false`来确定framework的类型。
+3. 如果给`use_framework!`添加指定引入方式`:linkage => :static`或`:linkage => :dynamic`，只能针对源码级pod有效，对已经是库形态的pod不起作用。
+4. podspec的`s.static_framework=true/false`优先于Podfile的`use_framework! :linkage`；也就是说，在podspec中没有用`s.static_framework=true/false`的情况下，Podfile的`use_framework! :linkage`设置链接方式才有效。
+5. `use_framework!`虽然不能确定采用的是动态库方式还是静态库方式链接，但是用了`use_framework!`之后，会改变头文件的搜索方式，否则编译会报错。
+```
+> PS: 当组件库既有静态库依赖也有动态库依赖的时候，如果使用`use_framework!`或者`use_frameworks! :linkage => :dynamic`时，将会报错`target has transitive dependencies that include statically linked binaries`；这个时候指定组件库的链接方式为`s.static_framework = true`的话，不论Podfile怎么有没有使用`use_framework!`，都可以成功。
+
+git commit -am "0.1.0 init"
+
+git tag -a 0.1.0 -m "v0.1.0版本"
+
+pod lib lint StaticWithCocoapods.podspec --verbose
+
+pod package StaticWithCocoapods.podspec --force
+
+1. 
+
+### 源码和二进制切换方案
+
+
+##### 使用subspec方式实现源码和二进制的切换

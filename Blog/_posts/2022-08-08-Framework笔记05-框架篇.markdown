@@ -1,0 +1,121 @@
+---
+layout: post
+title:  "Framework笔记05 - 框架篇"
+date:   2022-08-08 15:33:00 +0800
+categories: Framework
+---
+
+## 库的版本
+
+#### 1. Debug和Release  
+
+Debug：调试版本。系统本身也会有一些调试代码，所以此版本会稍大，运行较慢。  
+Release：发布版本。打包时会将系统的调试代码去掉，体积变小，运行速度变快。  
+```
+可以在`Edit Scheme`修改`Run`中`Build Configuration`选项为Debug或Release。
+```
+
+
+#### 2. 多架构编译  
+
+* ARM架构，是一种低成本、高性能、低耗电的处理器架构，广泛应用于移动通讯领域。  
+* ARM处理器指令集：  
+  * 模拟器指令集：i386、x86_64都是Mac处理器的指令集。i386是针对intel通用微处理器的32位架构，x86_64是针对x86架构的64位处理器。使用iOS模拟器的时候就会遇到这两个指令集。  
+  * 真机指令集：armv6、armv7、armv7s是32位ARM指令集，arm64是64位指令集。  
+* 目前iOS设备的指令集：  
+
+| 指令集 | 设备 | 说明 |
+| :---: | :---: | :---: |
+| armv6 | iPhone、iPhone 3G、iPod 1G/2G | 32位，09年之前的iOS设备 |
+| armv7 | iPhone 3GS、iPhone 4、iPhone 4S、iPod 3G/4G/5G、iPad、iPad 2、iPad 3、iPad Mini | 32位，A5X以及更早版本 |
+| armv7s | iPhone 5、iPhone 5C、iPad 4 | 32位，A6和A6X芯片使用(iOS6+) |
+| arm64 | iPhone 5S、iPhone 6(Plus)、iPhone 6S(Plus)、iPhone 7(Plus)、iPhone 8(Plus)、iPhone X、iPad Air(2)、Retina iPad Mini(2/3)、Apple TV 4 20年末、之后推出的基于Apple Silicon的新型Mac使用的体系架构 | 64位，A7及更高版本(iOS7+) |
+| arm64e | iPhone XS/XR/XS Max/11/11 Pro/11 Pro Max... | 64位，A12处理器指令集 |
+| i386 | iPhone 5、iPhone 5S及以下的模拟器 | 32位，Intel处理器iOS6.1及更低版本上的唯一选项 |
+| x86_64 | iPhone 6及以上的模拟器 | 64位，针对x86架构的64位处理器 |
+
+* ARM指令集原则上是向下兼容的。  
+
+
+#### 3. `Build Settings`-`Architectures`中修改架构的配置  
+
+* Additional SDKs  
+编译的时候需要附加的SDK。  
+
+* Architectures  
+指定工程支持的指令集的集合。如果设置多个architecture，则最后生成的二进制数据包就会包含多个指令集的代码，体积会变大。  
+默认设置是`Standard Architectures (arm64, armv7)`。之前Xcode版本中默认还支持armv7s，现在去掉了，应该是armv7和armv7s优化不大，能向下兼容，而且多设置一个指令集又会增大二进制包多体积，所以去掉了。  
+
+* Valid Architectures（Xcode12版本已移除）  
+有效指令集的集合。`Valid Architectures`与`Architectures`的交集会最终决定数据包的指令集代码。  
+默认是armv7、armv7s、arm64。  
+
+* Base SDK  
+当前编译所用的SDK版本。  
+
+* Build Active Architecture Only  
+是否针对当前连接的设备进行指令集编译，Debug默认是YES，Release默认是NO。  
+Xcode这么做的目的是为了让Debug下编译更高效。  
+若设置为YES，Xcode会根据上面`Valid Architectures`与`Architectures`的交集进行指令集代码编译。如果连接的设备里不属于制定的指令集，则会报错。  
+
+* Excluded Architectures  
+去除的指令集的集合。
+
+* Supported Platforms  
+支持的平台（DriveKit、iOS、macOS、tvOS、watchOS）。  
+
+#### 4. 常见问题
+
+##### a.编译报错1：  
+```
+No architectures to compile for (ONLY_ACTIVE_ARCH=YES, active arch=x86_64, VAILd_ARCHS=i386).
+```
+**原因**：`active architecture`(当前连接的设备的指令集)是64位指令集的，但是`valid architectures`里只有32位指令集。  
+**解决**：在`valid architectures`中增加arm64。  
+**不推荐**：将`Build Active Architecture Only`更改设置为NO，这是个简单粗暴的办法，但会使Xcode在Debug下也会生成非当前连接设备的指令集，降低Debug的编译效率；更何况Apple官方强制必须支持64位指令集。
+
+##### b.编译报错2：  
+```
+No architectures to compile for (ONLY_ACTIVE_ARCH=YES, active arch=i386, VAILd_ARCHS=x86_64).
+```
+**原因**：与上一个问题同理，连接设备是32位，但valid只写了64位。  
+**解决**：`valid architectures`增加armv7。  
+
+##### c.App在提交到AppStore的时候提示需要支持64bit，或者在App提交完成之后，收到Apple邮件`Missing 64-bit Support`：  
+**解决**：按照上述步骤添加64位的指令集。  
+
+##### d.导入静态库报错1：
+```
+Undefined symbols for architecture i386:
+    "_OBJC_CLASS_$_XXXX", referenced from:
+        objc-class-ref in AAAA.o
+        objc-class-ref in BBBB.o
+ld: symbol(s) not found for architecture i386.
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+```
+**问题**：  
+> (1) 可能是静态库中缺少某个类。  
+> (2) 静态库工程没有链接到目标程序。  
+> (3) 静态库的版本为真机版本，不包含模拟器版本。 
+ 
+**解决**：
+> (1) 查看静态库里面是否存在这个类。  
+> (2) 在`Build Phases`的`Link Binary With Libraries`中添加静态库。  
+> (3) 把真机版本换成模拟器版本，或者合成一个通用版本再导入。  
+
+##### e.导入静态库报错2：
+```
+Undefined symbols for architecture arm64:
+    "_OBJC_CLASS_$_XXXX", referenced from:
+        objc-class-ref in AAAA.o
+        objc-class-ref in BBBB.o
+ld: symbol(s) not found for architecture arm64.
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+```
+**问题**：  
+> (1) 原因同上，可能是静态库中缺少某个类。  
+> (2) 原因同上，静态库工程没有链接到目标程序。  
+> (3) 静态库的版本为模拟器版本，不包含真机版本。也可能因为静态库不支持64位。  
+
+**解决**：
+通过一一排除之后，如果发现是静态库不支持64位，可以看看最新版本的静态库是不是支持了64位；或者拿到静态库源码重新进行打包，在Valid architectures中添加arm64；如果不能获取源码的话，那就只能换别的静态库了。  
